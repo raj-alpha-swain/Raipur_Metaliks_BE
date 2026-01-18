@@ -39,9 +39,6 @@ public class Sauda {
     @Column(name = "difference")
     private Integer difference;
 
-    @Column(name = "actual_quantity")
-    private Integer actualQuantity;
-
     @OneToMany(mappedBy = "sauda", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TruckDelivery> truckDeliveries = new ArrayList<>();
 
@@ -49,11 +46,21 @@ public class Sauda {
     public void addTruckDelivery(TruckDelivery truckDelivery) {
         truckDeliveries.add(truckDelivery);
         truckDelivery.setSauda(this);
+        updateDifference();
     }
 
     // Helper method to remove truck delivery
     public void removeTruckDelivery(TruckDelivery truckDelivery) {
         truckDeliveries.remove(truckDelivery);
         truckDelivery.setSauda(null);
+        updateDifference();
+    }
+
+    // Helper method to update difference
+    public void updateDifference() {
+        int totalTruckQuantity = truckDeliveries.stream()
+                .mapToInt(truck -> truck.getQuantity() != null ? truck.getQuantity() : 0)
+                .sum();
+        this.difference = this.saudaQuantity != null ? this.saudaQuantity - totalTruckQuantity : 0;
     }
 }
