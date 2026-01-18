@@ -66,4 +66,27 @@ public class SaudaController {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+    @GetMapping("/sellers")
+    public ResponseEntity<List<String>> getUniqueSellers() {
+        try {
+            List<String> sellers = saudaService.getUniqueSellers();
+            return new ResponseEntity<>(sellers, HttpStatus.OK);
+        } catch (Exception e) {
+            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @GetMapping("/filter")
+    public ResponseEntity<List<SaudaDto>> getFilteredSaudas(
+            @RequestParam(required = false) String seller,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month) {
+        try {
+            List<SaudaDto> saudas = saudaService.getFilteredSaudas(seller, year, month);
+            return new ResponseEntity<>(saudas, HttpStatus.OK);
+        } catch (Exception e) {
+            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
 }
