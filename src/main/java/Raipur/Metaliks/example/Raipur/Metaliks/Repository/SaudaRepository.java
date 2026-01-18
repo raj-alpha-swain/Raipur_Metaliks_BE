@@ -25,4 +25,6 @@ public interface SaudaRepository extends JpaRepository<Sauda, Long> {
             @Param("sellerName") String sellerName,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
+
+    List<Sauda> findByBuyerName(String buyerName);
 }

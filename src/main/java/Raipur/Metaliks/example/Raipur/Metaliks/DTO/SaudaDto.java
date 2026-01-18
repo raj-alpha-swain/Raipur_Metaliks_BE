@@ -16,6 +16,5 @@ public class SaudaDto {
     private Double price;
     private Integer saudaQuantity;
     private Integer difference;
-    private Integer actualQuantity;
     private List<TruckDeliveryDto> truckDeliveries;
 }

@@ -7,8 +7,10 @@ import Raipur.Metaliks.example.Raipur.Metaliks.DTO.SaudaDto;
 import Raipur.Metaliks.example.Raipur.Metaliks.DTO.TruckDeliveryDto;
 import Raipur.Metaliks.example.Raipur.Metaliks.Entity.Sauda;
 import Raipur.Metaliks.example.Raipur.Metaliks.Entity.TruckDelivery;
+import Raipur.Metaliks.example.Raipur.Metaliks.Entity.Buyer;
 import Raipur.Metaliks.example.Raipur.Metaliks.Repository.SaudaRepository;
 import Raipur.Metaliks.example.Raipur.Metaliks.Repository.TruckDeliveryRepository;
+import Raipur.Metaliks.example.Raipur.Metaliks.Repository.BuyerRepository;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -22,6 +24,9 @@ public class SaudaService {
     @Autowired
     private TruckDeliveryRepository truckDeliveryRepository;
 
+    @Autowired
+    private BuyerRepository buyerRepository;
+
     @Transactional
     public SaudaDto createSauda(SaudaDto saudaDto) {
         Sauda sauda = new Sauda();
@@ -31,8 +36,6 @@ public class SaudaService {
         sauda.setMaterial(saudaDto.getMaterial());
         sauda.setPrice(saudaDto.getPrice());
         sauda.setSaudaQuantity(saudaDto.getSaudaQuantity());
-        sauda.setDifference(saudaDto.getDifference());
-        sauda.setActualQuantity(saudaDto.getActualQuantity());
 
         // Add truck deliveries
         if (saudaDto.getTruckDeliveries() != null) {
@@ -45,7 +48,14 @@ public class SaudaService {
             }
         }
 
+        // Calculate difference automatically
+        sauda.updateDifference();
+
         Sauda savedSauda = saudaRepository.save(sauda);
+
+        // Sync buyer data
+        syncBuyerFromDeal(savedSauda);
+
         return convertToDto(savedSauda);
     }
 
@@ -74,8 +84,6 @@ public class SaudaService {
         sauda.setMaterial(saudaDto.getMaterial());
         sauda.setPrice(saudaDto.getPrice());
         sauda.setSaudaQuantity(saudaDto.getSaudaQuantity());
-        sauda.setDifference(saudaDto.getDifference());
-        sauda.setActualQuantity(saudaDto.getActualQuantity());
 
         // Update truck deliveries
         sauda.getTruckDeliveries().clear();
@@ -89,7 +97,14 @@ public class SaudaService {
             }
         }
 
+        // Calculate difference automatically
+        sauda.updateDifference();
+
         Sauda updatedSauda = saudaRepository.save(sauda);
+
+        // Sync buyer data
+        syncBuyerFromDeal(updatedSauda);
+
         return convertToDto(updatedSauda);
     }
 
@@ -140,7 +155,6 @@ public class SaudaService {
         dto.setPrice(sauda.getPrice());
         dto.setSaudaQuantity(sauda.getSaudaQuantity());
         dto.setDifference(sauda.getDifference());
-        dto.setActualQuantity(sauda.getActualQuantity());
 
         List<TruckDeliveryDto> truckDtos = sauda.getTruckDeliveries().stream()
                 .map(truck -> {
@@ -155,5 +169,31 @@ public class SaudaService {
 
         dto.setTruckDeliveries(truckDtos);
         return dto;
+    }
+
+    private void syncBuyerFromDeal(Sauda sauda) {
+        try {
+            // Find or create buyer by name
+            Buyer buyer = buyerRepository.findByName(sauda.getBuyerName())
+                    .orElse(new Buyer());
+
+            buyer.setName(sauda.getBuyerName());
+            buyer.setProduct(sauda.getMaterial());
+
+            // Aggregate total quantity from all deals for this buyer
+            List<Sauda> buyerDeals = saudaRepository.findByBuyerName(sauda.getBuyerName());
+            long totalQuantity = buyerDeals.stream()
+                    .mapToLong(s -> s.getSaudaQuantity() != null ? s.getSaudaQuantity() : 0)
+                    .sum();
+
+            buyer.setQuantity(totalQuantity);
+            buyer.setPrice(sauda.getPrice() != null ? sauda.getPrice().floatValue() : 0f);
+            buyer.setStatus("Active");
+
+            buyerRepository.save(buyer);
+        } catch (Exception e) {
+            // Log error but don't fail the deal creation/update
+            System.err.println("Error syncing buyer: " + e.getMessage());
+        }
     }
 }
