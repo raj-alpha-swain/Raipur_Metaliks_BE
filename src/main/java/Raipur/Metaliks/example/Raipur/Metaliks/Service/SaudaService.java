@@ -98,6 +98,38 @@ public class SaudaService {
         saudaRepository.deleteById(id);
     }
 
+    @Transactional(readOnly = true)
+    public List<String> getUniqueSellers() {
+        return saudaRepository.findDistinctSellerNames();
+    }
+
+    @Transactional(readOnly = true)
+    public List<SaudaDto> getFilteredSaudas(String seller, Integer year, Integer month) {
+        List<Sauda> saudas;
+
+        if (seller != null && !seller.isEmpty() && year != null && month != null) {
+            // Filter by both seller and date
+            java.time.LocalDate startDate = java.time.LocalDate.of(year, month, 1);
+            java.time.LocalDate endDate = startDate.withDayOfMonth(startDate.lengthOfMonth());
+            saudas = saudaRepository.findBySellerNameAndDateBetween(seller, startDate, endDate);
+        } else if (seller != null && !seller.isEmpty()) {
+            // Filter by seller only
+            saudas = saudaRepository.findBySellerName(seller);
+        } else if (year != null && month != null) {
+            // Filter by date only
+            java.time.LocalDate startDate = java.time.LocalDate.of(year, month, 1);
+            java.time.LocalDate endDate = startDate.withDayOfMonth(startDate.lengthOfMonth());
+            saudas = saudaRepository.findByDateBetween(startDate, endDate);
+        } else {
+            // No filters, return all
+            saudas = saudaRepository.findAll();
+        }
+
+        return saudas.stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+
     private SaudaDto convertToDto(Sauda sauda) {
         SaudaDto dto = new SaudaDto();
         dto.setId(sauda.getId());
